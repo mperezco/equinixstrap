@@ -28,22 +28,22 @@ BASEDOMAIN=$2
 METADATANAME=$3
 PULLSECRET=`cat pull-secret.txt`
 SSHKEY=`cat ~/.ssh/id_rsa.pub`
-PUBLICIP=`ip address show dev bond0 |grep bond0 |grep -v bond0:0 |grep inet |awk -F" " '{ print $2}' |awk -F"/" '{print $1}'`
+PUBLICIP=`ip address show dev ens3 |grep ens3 |grep -v bond0:0 |grep inet |awk -F" " '{ print $2}' |awk -F"/" '{print $1}'`
 
 
 
 
 # Register
 echo "==== registering with subscription manager"
-subscription-manager register
+#subscription-manager register
 subscription-manager attach --pool=${POOL}
 
 echo "==== clean up yum and repo setup"
-subscription-manager clean
+#subscription-manager clean
 yum clean all
-yum install yum-utils -y
-yum-config-manager --add-repo rhel-7-server-rpms
-yum-config-manager --add-repo rhel-7-server-extra-rpms
+#yum install yum-utils -y
+#yum-config-manager --add-repo rhel-7-server-rpms
+#yum-config-manager --add-repo rhel-7-server-extra-rpms
 
 echo "==== setup firewall"
 firewall-cmd --add-port=80/tcp
@@ -167,13 +167,12 @@ echo "apache is setup" > /var/www/html/test
 service httpd start
 
 echo "==== get openshift install, client, and RHCOS images"
-wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux.tar.gz
-wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz
-wget https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img
-wget https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-4.4.3-x86_64-installer.x86_64.iso
-wget https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-4.4.3-x86_64-installer-kernel-x86_64
-wget https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-4.4.3-x86_64-metal.x86_64.raw.gz
-
+wget -nc https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-linux.tar.gz
+wget -nc https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz
+wget -nc https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-installer-initramfs.x86_64.img
+wget -nc https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-4.7.13-x86_64-live.x86_64.iso
+wget -nc https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-installer-kernel-x86_64
+wget -nc https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-metal.x86_64.raw.gz
 tar -xvzf openshift-install-linux.tar.gz
 tar -xvzf openshift-client-linux.tar.gz
 
@@ -223,10 +222,10 @@ echo "==== Create publicly accessible directory, Copy ignition files, Create iPX
 mkdir /var/www/html/packetstrap
 
 cp packetinstall/*.ign /var/www/html/packetstrap/
-cp rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img /var/www/html/packetstrap/
-cp rhcos-4.4.3-x86_64-installer.x86_64.iso /var/www/html/packetstrap/
-cp rhcos-4.4.3-x86_64-installer-kernel-x86_64 /var/www/html/packetstrap/
-cp rhcos-4.4.3-x86_64-metal.x86_64.raw.gz /var/www/html/packetstrap/
+cp rhcos-installer-initramfs.x86_64.img /var/www/html/packetstrap/
+cp rhcos-4.7.13-x86_64-live.x86_64.iso /var/www/html/packetstrap/
+cp rhcos-installer-kernel-x86_64 /var/www/html/packetstrap/
+cp rhcos-metal.x86_64.raw.gz /var/www/html/packetstrap/
 
 chmod 644 /var/www/html/packetstrap/*.ign
 
@@ -234,24 +233,24 @@ chmod 644 /var/www/html/packetstrap/*.ign
 cat <<EOT > /var/www/html/packetstrap/bootstrap.boot
 #!ipxe
 
-kernel http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/bootstrap.ign
-initrd http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img
+kernel http://PUBLICIP:8080/packetstrap/rhcos-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/bootstrap.ign
+initrd http://PUBLICIP:8080/packetstrap/rhcos-installer-initramfs.x86_64.img
 boot
 EOT
 
 cat <<EOT > /var/www/html/packetstrap/master.boot
 #!ipxe
 
-kernel http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/master.ign
-initrd http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img
+kernel http://PUBLICIP:8080/packetstrap/rhcos-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/master.ign
+initrd http://PUBLICIP:8080/packetstrap/rhcos-installer-initramfs.x86_64.img
 boot
 EOT
 
 cat <<EOT > /var/www/html/packetstrap/worker.boot
 #!ipxe
 
-kernel http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/worker.ign
-initrd http://PUBLICIP:8080/packetstrap/rhcos-4.4.3-x86_64-installer-initramfs.x86_64.img
+kernel http://PUBLICIP:8080/packetstrap/rhcos-installer-kernel-x86_64 ip=dhcp rd.neednet=1 initrd=rhcos-installer-initramfs.x86_64.img console=ttyS1,115200n8 coreos.inst=yes coreos.inst.install_dev=sda coreos.inst.image_url=http://PUBLICIP:8080/packetstrap/rhcos-metal.x86_64.raw.gz coreos.inst.ignition_url=http://PUBLICIP:8080/packetstrap/worker.ign
+initrd http://PUBLICIP:8080/packetstrap/rhcos-installer-initramfs.x86_64.img
 boot
 EOT
 
@@ -263,9 +262,9 @@ sed -i "s/PUBLICIP/$PUBLICIP/g" /var/www/html/packetstrap/worker.boot
 
 
 echo "==== all done, you can now iPXE servers to:"
-echo "       http://${PUBLICIP}:8080/packetstrap/bootstrap.boot"
-echo "       http://${PUBLICIP}:8080/packetstrap/master.boot"
-echo "       http://${PUBLICIP}:8080/packetstrap/worker.boot"
+echo "       http://${PUBLICIP}:8080/packetstrap/bootstrap.boot" | tee -a iPXE_info.txt
+echo "       http://${PUBLICIP}:8080/packetstrap/master.boot" | tee -a iPXE_info.txt
+echo "       http://${PUBLICIP}:8080/packetstrap/worker.boot" | tee -a iPXE_info.txt
 
 echo "==== setting path"
 export PATH=$PATH:$PWD
