@@ -1,5 +1,5 @@
-# Deploying OpenShift 4.4 on Packet
-I thought I’d share how I’ve automated a large portion of the deployment of OpenShift 4.4 on bare metal from Packet. I did this rather quickly, so your mileage may vary. You should always consider using the official documentation if you are doing something serious! I’m assuming you have:
+# Deploying OpenShift 4.7 on Equinix Metal
+I'm updating the deployment of OpenShift 4.7 on bare metal from Equinix Metal. I did this rather quickly, so your mileage may vary. You should always consider using the official documentation if you are doing something serious! I’m assuming you have:
 
  - SSH keys configured in Packet
  - A domain registered in AWS Route53 (feel free to use your favorite DNS service)
@@ -12,35 +12,35 @@ First, deploy the following in EWR1:
  - x1.small.x86 ($0.40/hour)
  - Operating System = Licensed – RHEL 7
 
-This node will act as our “helper”. This is not to be confused with the bootstrap node for deploying OpenShift. We will deploy that later. The “helper” will be where we run the packetstrap.sh script to get everything ready to go.
+This node will act as our “helper”. This is not to be confused with the bootstrap node for deploying OpenShift. We will deploy that later. The “helper” will be where we run the equinixstrap.sh script to get everything ready to go.
 
 Once x1.small.x86 is up and running ssh to it and download the scripts (git isn’t installed by default).
 
 ```
-# wget https://raw.githubusercontent.com/jameslabocki/packetstrap/master/packetstrap.sh
+# wget https://raw.githubusercontent.com/mperezco/equinixstrap/master/equinixstrap.sh
 
-# wget https://raw.githubusercontent.com/jameslabocki/packetstrap/master/fixhaproxy.sh
+# wget https://raw.githubusercontent.com/mperezco/equinixstrap/master/fixhaproxy.sh
 
-# wget https://raw.githubusercontent.com/jameslabocki/packetstrap/master/imageregistry.sh
+# wget https://raw.githubusercontent.com/mperezco/equinixstrap/master/imageregistry.sh
 
-# wget https://raw.githubusercontent.com/jameslabocki/packetstrap/master/persistentvolumes.sh
+# wget https://raw.githubusercontent.com/mperezco/equinixstrap/master/persistentvolumes.sh
 ```
 
 ```
 # chmod +x *.sh
 ```
 
-Now download your pull-secret from the [OpenShift Install Page](https://cloud.redhat.com/openshift/install/pull-secret) and drop it into your current working directory as pull-secret.txt. After that, run the packetstrap.sh script and pass it three arguments:
+Now download your pull-secret from the [OpenShift Install Page](https://cloud.redhat.com/openshift/install/pull-secret) and drop it into your current working directory as pull-secret.txt. After that, run the equinixstrap.sh script and pass it three arguments:
 
  - The pool ID to use that contains the OpenShift subscriptions.
  - The domain name (demonstr8.net below)
  - The sub-domain name and/or cluster name (test below)
 
 ```
-# ./packetstrap.sh 8a85f99c6f0fa8e3016f19db8d17768e demonstr8.net test
+# ./equinixstrap.sh 8a85f99c6f0fa8e3016f19db8d17768e demonstr8.net test
 ```
 
-This will take a little bit to run and it does a lot of things. You can [view the script](https://github.com/jameslabocki/packetstrap/blob/master/packetstrap.sh) if you want to see everything it does. In the end, if everything worked you should see this:
+This will take a little bit to run and it does a lot of things. You can [view the script](https://github.com/mperezco/equinixstrap/blob/master/equinixstrap.sh) if you want to see everything it does. In the end, if everything worked you should see this:
 
 ```
 ==== create manifests
@@ -53,9 +53,9 @@ INFO Consuming Common Manifests from target directory
 INFO Consuming Master Machines from target directory
 ==== Create publicly accessible directory, Copy ignition files, Create iPXE files
 ==== all done, you can now iPXE servers to:
-http://147.75.199.131:8080/packetstrap/bootstrap.boot
-http://147.75.199.131:8080/packetstrap/master.boot
-http://147.75.199.131:8080/packetstrap/worker.boot
+http://147.75.199.131:8080/equinixstrap/bootstrap.boot
+http://147.75.199.131:8080/equinixstrap/master.boot
+http://147.75.199.131:8080/equinixstrap/worker.boot
 ```
 
 
@@ -132,7 +132,7 @@ You can approve the pending requests quickly like this.
 # ./oc get csr -o go-template='{{range .items}}{{if not .status}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}' | xargs ./oc adm certificate approve
 ```
 
-Now you should be able to point your browser at the OpenShift console located at https://console-openshift-console.apps.test.demonstr8.net/ where test = cluster name and demonstr8.net = basedomain or $2 and $3 from your packetstrap.sh command at the start.
+Now you should be able to point your browser at the OpenShift console located at https://console-openshift-console.apps.test.demonstr8.net/ where test = cluster name and demonstr8.net = basedomain or $2 and $3 from your equinixstrap.sh command at the start.
 
 If you want to enable an image registry quickly you can do that by running imageregistry.sh. Note that this is not meant for production use as it uses local storage.
 
